@@ -2,55 +2,51 @@ import React, { useContext, useEffect } from "react";
 import { Modal } from "react-bootstrap";
 import { useActor } from "@xstate/react";
 
-import { Hud } from "features/hud/Hud";
-import { Crops } from "features/crops/Crops";
-import { Water } from "features/water/Water";
+import { Hud } from "features/farming/hud/Hud";
+import { Crops } from "features/farming/crops/Crops";
+import { Water } from "features/farming/water/Water";
 import { Loading } from "features/auth/components";
-import { Animals } from "features/animals/Animals";
+import { Animals } from "features/farming/animals/Animals";
 
 import { useInterval } from "lib/utils/hooks/useInterval";
+import * as AuthProvider from "features/auth/lib/Provider";
 
 import { Context } from "./GameProvider";
 import { Panel } from "components/ui/Panel";
 import { ToastManager } from "./toast/ToastManager";
 import { Decorations } from "./components/Decorations";
-import { Minting } from "./components/Minting";
 import { Success } from "./components/Success";
 import { Syncing } from "./components/Syncing";
-import { Withdrawing } from "./components/Withdrawing";
-import { Blacklisted } from "./components/Blacklisted";
 
-import { Quarry } from "features/quarry/Quarry";
-import { TeamDonation } from "features/teamDonation/TeamDonation";
-import { Forest } from "features/forest/Forest";
+import { Quarry } from "features/farming/quarry/Quarry";
+import { TeamDonation } from "features/farming/teamDonation/TeamDonation";
+import { Forest } from "features/farming/forest/Forest";
 
 import { StateValues } from "./lib/gameMachine";
-import { Town } from "features/town/Town";
+import { Town } from "features/farming/town/Town";
 import { ErrorCode } from "lib/errors";
 import { ErrorMessage } from "features/auth/ErrorMessage";
-import { House } from "features/house/House";
-import { Tailor } from "features/tailor/Tailor";
+import { House } from "features/farming/house/House";
 import { Lore } from "./components/Lore";
 import { ClockIssue } from "./components/ClockIssue";
-import { TooManyRequests } from "features/auth/components/TooManyRequests";
 import { screenTracker } from "lib/utils/screen";
+import { Resetting } from "features/auth/components/Resetting";
+import { GoblinShovel } from "features/farming/crops/components/GoblinShovel";
 
 const AUTO_SAVE_INTERVAL = 1000 * 30; // autosave every 30 seconds
 const SHOW_MODAL: Record<StateValues, boolean> = {
   loading: true,
   playing: false,
-  readonly: false,
   autosaving: false,
-  minting: true,
-  success: true,
   syncing: true,
-  withdrawing: true,
+  synced: true,
   error: true,
-  blacklisted: true,
   levelling: false,
+  resetting: true,
 };
 
 export const Game: React.FC = () => {
+  const { authService } = useContext(AuthProvider.Context);
   const { gameService } = useContext(Context);
   const [gameState, send] = useActor(gameService);
 
@@ -79,7 +75,7 @@ export const Game: React.FC = () => {
 
     window.addEventListener("blur", save);
 
-    screenTracker.start();
+    screenTracker.start(authService);
 
     // cleanup on every gameState update
     return () => {
@@ -95,33 +91,34 @@ export const Game: React.FC = () => {
       <Modal show={SHOW_MODAL[gameState.value as StateValues]} centered>
         <Panel className="text-shadow">
           {gameState.matches("loading") && <Loading />}
+          {gameState.matches("resetting") && <Resetting />}
           {gameState.matches("error") && (
             <ErrorMessage
               errorCode={gameState.context.errorCode as ErrorCode}
             />
           )}
-          {gameState.matches("blacklisted") && <Blacklisted />}
-          {gameState.matches("minting") && <Minting />}
-          {gameState.matches("success") && <Success />}
+          {gameState.matches("synced") && <Success />}
           {gameState.matches("syncing") && <Syncing />}
-          {gameState.matches("withdrawing") && <Withdrawing />}
         </Panel>
       </Modal>
 
       <ClockIssue show={gameState.context.offset > 0} />
-
       <Hud />
       <TeamDonation />
       <Crops />
       <Water />
       <Animals />
-      <Decorations />
+      <Decorations state={gameState.context.state} />
       <Forest />
       <Quarry />
       <Town />
-      <House />
-      <Tailor />
+      <House
+        state={gameState.context.state}
+        playerCanLevelUp={gameState.matches("levelling")}
+        isFarming
+      />
       <Lore />
+      <GoblinShovel />
     </>
   );
 };

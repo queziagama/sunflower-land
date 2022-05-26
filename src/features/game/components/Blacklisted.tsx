@@ -1,29 +1,36 @@
 import React, { useContext } from "react";
 
-import death from "assets/npcs/skeleton_death.gif";
-import { Context } from "../GameProvider";
-import { useActor } from "@xstate/react";
+import * as AuthProvider from "features/auth/lib/Provider";
+
+import suspiciousGoblin from "assets/npcs/suspicious_goblin.gif";
+import { Button } from "components/ui/Button";
 
 export const Blacklisted: React.FC = () => {
-  const { gameService } = useContext(Context);
-  const [
-    {
-      context: { whitelistedAt },
-    },
-  ] = useActor(gameService);
+  const { authService } = useContext(AuthProvider.Context);
+
+  const continuePlaying = () => {
+    authService.send("CONTINUE");
+  };
 
   return (
-    <div className="flex flex-col items-center p-2">
-      <span className="text-shadow text-center">Goblins detected!</span>
-      <img src={death} className="w-1/2" />
-      <span className="text-shadow text-xs text-center mt-2">
-        This farm has been identified for using automated software to mint farms
-        and play the game or identifed for multi-accounting.
-      </span>
-      <span className="text-shadow underline text-xs text-center mt-4 mb-2">
-        Banned until
-      </span>
-      {whitelistedAt?.toLocaleString()}
-    </div>
+    <>
+      <div className="flex flex-col items-center p-2">
+        <span className="text-center">Something strange!</span>
+        <img src={suspiciousGoblin} className="w-16 mt-2" />
+        <span className="text-sm mt-2 mb-2">
+          The anti-bot detection system is relatively new and has picked up some
+          strange behaviour. Some actions may be temporarily restricted.
+        </span>
+        <a
+          href={`https://forms.gle/ajhNS6kr3c6U3YLT9`}
+          className="underline text-center text-sm hover:text-blue-500 mt-1 mb-2 block"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Share details to help us improve our system
+        </a>
+      </div>
+      <Button onClick={continuePlaying}>Continue Playing</Button>
+    </>
   );
 };

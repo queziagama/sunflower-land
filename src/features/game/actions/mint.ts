@@ -1,12 +1,12 @@
 import { metamask } from "lib/blockchain/metamask";
 import { CONFIG } from "lib/config";
 import { ERRORS } from "lib/errors";
-import { LimitedItem } from "../types/craftables";
+import { LimitedItemName } from "../types/craftables";
 
 type Request = {
   farmId: number;
   sessionId: string;
-  item: LimitedItem;
+  item: LimitedItemName;
   token: string;
   captcha: string;
 };
@@ -14,14 +14,13 @@ type Request = {
 const API_URL = CONFIG.API_URL;
 
 export async function mint(request: Request) {
-  const response = await window.fetch(`${API_URL}/mint`, {
+  const response = await window.fetch(`${API_URL}/mint/${request.farmId}`, {
     method: "POST",
     headers: {
       "content-type": "application/json;charset=UTF-8",
       Authorization: `Bearer ${request.token}`,
     },
     body: JSON.stringify({
-      farmId: request.farmId,
       sessionId: request.sessionId,
       item: request.item,
       captcha: request.captcha,
@@ -38,7 +37,7 @@ export async function mint(request: Request) {
 
   const transaction = await response.json();
 
-  const sessionId = await metamask.getSessionManager().sync(transaction);
+  const sessionId = await metamask.getSessionManager().mint(transaction);
 
   return { sessionId, verified: true };
 }

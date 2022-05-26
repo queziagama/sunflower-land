@@ -31,8 +31,8 @@ import rod from "assets/tools/fishing_rod.png";
 // NFTs
 import chickenCoop from "assets/nfts/chicken_coop.png";
 import christmasTree from "assets/nfts/christmas_tree.png";
-import farmCat from "assets/nfts/farm_cat.png";
-import farmDog from "assets/nfts/farm_dog.png";
+import farmCat from "assets/nfts/farm_cat.gif";
+import farmDog from "assets/nfts/farm_dog.gif";
 import gnome from "assets/nfts/gnome.png";
 import goldEgg from "assets/nfts/gold_egg.png";
 import potatoStatue from "assets/nfts/potato_statue.png";
@@ -43,13 +43,17 @@ import sunflowerTombstone from "assets/nfts/sunflower_tombstone.png";
 import goldenCauliflower from "assets/nfts/golden_cauliflower.png";
 import crown from "assets/nfts/goblin_crown.png";
 import fountain from "assets/nfts/fountain.gif";
-import beaver from "assets/nfts/beaver.png";
-import apprenticeBeaver from "assets/nfts/apprentice_beaver.png";
-import constructionBeaver from "assets/nfts/construction_beaver.png";
+import beaver from "assets/nfts/beaver.gif";
+import apprenticeBeaver from "assets/nfts/apprentice_beaver.gif";
+import constructionBeaver from "assets/nfts/construction_beaver.gif";
 import mysteriousParsnip from "assets/nfts/mysterious_parsnip.png";
 import carrotSword from "assets/nfts/carrot_sword.png";
 import nancy from "assets/nfts/nancy.png";
 import kuebiko from "assets/nfts/kuebiko.gif";
+import nyonStatue from "assets/nfts/nyon_statue.png";
+import homelessTent from "assets/nfts/homeless_tent.png";
+import farmerBath from "assets/nfts/farmer_bath.png";
+import mysteriousHead from "assets/nfts/mysterious_head.png";
 
 // Foods
 import pumpkinSoup from "assets/nfts/pumpkin_soup.png";
@@ -119,6 +123,25 @@ import barnManager from "assets/skills/barn_manager.png";
 import seedSpecialist from "assets/skills/seed_specialist.png";
 import logger from "assets/skills/logger.png";
 import lumberjack from "assets/skills/lumberjack.png";
+import artist from "assets/skills/artist.gif";
+import coder from "assets/skills/coder.png";
+import discord from "assets/skills/discord.png";
+import liquidityProvider from "assets/skills/liquidity_provider.png";
+
+// Egg
+import redEgg from "src/assets/nfts/easter/red_egg.png";
+import yellowEgg from "src/assets/nfts/easter/yellow_egg.png";
+import purpleEgg from "src/assets/nfts/easter/purple_egg.png";
+import blueEgg from "src/assets/nfts/easter/blue_egg.png";
+import greenEgg from "src/assets/nfts/easter/green_egg.png";
+import orangeEgg from "src/assets/nfts/easter/orange_egg.png";
+import pinkEgg from "src/assets/nfts/easter/pink_egg.png";
+import easterBasket from "src/assets/nfts/easter/basket.png";
+import easterBunny from "src/assets/nfts/easter/easter_bunny.gif";
+
+//MOM Event
+import momCoreEngine from "src/assets/nfts/mom/engine_core.png";
+import observatory from "src/assets/nfts/mom/observatory.gif";
 
 import { InventoryItemName } from "./game";
 import {
@@ -128,18 +151,20 @@ import {
   BLACKSMITH_ITEMS,
   MARKET_ITEMS,
   BARN_ITEMS,
+  CRAFTABLES,
+  LimitedItem,
 } from "./craftables";
 import { CROPS, SEEDS } from "./crops";
 import { RESOURCES } from "./resources";
 import { Section } from "lib/utils/hooks/useScrollIntoView";
 import { SKILL_TREE } from "./skills";
 
-export type ItemDetails = {
+export interface ItemDetails extends Omit<LimitedItem, "name" | "description"> {
   description: string;
   image: any;
   secondaryImage?: any;
   section?: Section;
-};
+}
 
 type Items = Record<InventoryItemName, ItemDetails>;
 
@@ -390,6 +415,22 @@ export const ITEM_DETAILS: Items = {
     ...MARKET_ITEMS["Carrot Sword"],
     image: carrotSword,
   },
+  "Nyon Statue": {
+    ...BLACKSMITH_ITEMS["Nyon Statue"],
+    image: nyonStatue,
+  },
+  "Homeless Tent": {
+    ...BLACKSMITH_ITEMS["Homeless Tent"],
+    image: homelessTent,
+  },
+  "Farmer Bath": {
+    ...BLACKSMITH_ITEMS["Farmer Bath"],
+    image: farmerBath,
+  },
+  "Mysterious Head": {
+    ...BLACKSMITH_ITEMS["Mysterious Head"],
+    image: mysteriousHead,
+  },
 
   // FOOD
   "Pumpkin Soup": {
@@ -444,6 +485,22 @@ export const ITEM_DETAILS: Items = {
   "Gold Rush": {
     description: SKILL_TREE["Gold Rush"].perks[0],
     image: goldRush,
+  },
+  Artist: {
+    description: SKILL_TREE["Artist"].perks[0],
+    image: artist,
+  },
+  Coder: {
+    description: SKILL_TREE["Coder"].perks[0],
+    image: coder,
+  },
+  "Liquidity Provider": {
+    description: SKILL_TREE["Liquidity Provider"].perks[0],
+    image: liquidityProvider,
+  },
+  "Discord Mod": {
+    description: SKILL_TREE["Discord Mod"].perks[0],
+    image: discord,
   },
 
   /**
@@ -616,5 +673,51 @@ export const ITEM_DETAILS: Items = {
   "Colombian Flag": {
     ...FLAGS["Colombian Flag"],
     image: colombian_flag,
+  },
+
+  "Egg Basket": {
+    ...CRAFTABLES()["Egg Basket"],
+    image: easterBasket,
+  },
+  "Easter Bunny": {
+    ...CRAFTABLES()["Easter Bunny"],
+    image: easterBunny,
+  },
+  "Blue Egg": {
+    description: "A blue easter egg",
+    image: blueEgg,
+  },
+  "Orange Egg": {
+    description: "An orange easter egg",
+    image: orangeEgg,
+  },
+  "Green Egg": {
+    description: "A green easter egg",
+    image: greenEgg,
+  },
+  "Yellow Egg": {
+    description: "A yellow easter egg",
+    image: yellowEgg,
+  },
+  "Red Egg": {
+    description: "A red easter egg",
+    image: redEgg,
+  },
+  "Pink Egg": {
+    description: "A pink easter egg",
+    image: pinkEgg,
+  },
+  "Purple Egg": {
+    description: "A purple easter egg",
+    image: purpleEgg,
+  },
+
+  "Engine Core": {
+    description: "The power of the sunflower",
+    image: momCoreEngine,
+  },
+  Observatory: {
+    description: "Reach the stars and increase XP",
+    image: observatory,
   },
 };

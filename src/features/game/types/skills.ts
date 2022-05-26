@@ -9,9 +9,13 @@ export type SkillName =
   | "Lumberjack"
   | "Prospector"
   | "Logger"
-  | "Gold Rush";
+  | "Gold Rush"
+  | "Artist"
+  | "Coder"
+  | "Liquidity Provider"
+  | "Discord Mod";
 
-export type Profession = "farming" | "gathering";
+export type Profession = "farming" | "gathering" | "contributor";
 
 enum REQUIRED_XP {
   LEVEL_1 = 0,
@@ -31,7 +35,7 @@ export const SKILL_TREE: Record<
   {
     level: number;
     profession: Profession;
-    conflicts: SkillName;
+    conflicts?: SkillName;
     requires?: SkillName;
     perks: string[];
   }
@@ -82,7 +86,7 @@ export const SKILL_TREE: Record<
     requires: "Lumberjack",
     conflicts: "Gold Rush",
     profession: "gathering",
-    perks: ["Axes can be used on 2 trees"],
+    perks: ["Axes last 25% longer"],
   },
   "Gold Rush": {
     level: 10,
@@ -90,6 +94,26 @@ export const SKILL_TREE: Record<
     conflicts: "Logger",
     profession: "gathering",
     perks: ["Increase gold drops by 50%"],
+  },
+  Artist: {
+    level: 1,
+    profession: "contributor",
+    perks: ["Save 10% on shop & blacksmith tools"],
+  },
+  Coder: {
+    level: 1,
+    profession: "contributor",
+    perks: ["Crops yield 20% more"],
+  },
+  "Discord Mod": {
+    level: 1,
+    profession: "contributor",
+    perks: ["Yield 35% more wood"],
+  },
+  "Liquidity Provider": {
+    level: 1,
+    profession: "contributor",
+    perks: ["50% reduced SFL withdrawal fee"],
   },
 };
 
@@ -191,6 +215,11 @@ export function getAvailableUpgrades(game: GameState): SkillName[] {
   }
 
   return [];
+}
+
+export function upgradeAvailable(state: GameState) {
+  const upgrades = getAvailableUpgrades(state);
+  return upgrades.length > 0;
 }
 
 type Level = 10 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1;

@@ -6,8 +6,6 @@ import {
   Rock,
   Tree,
 } from "../types/game";
-import { PastAction } from "./gameMachine";
-import { processEvent } from "./processEvent";
 
 /**
  * Converts API response into a game state
@@ -68,6 +66,7 @@ export function makeGame(farm: any): GameState {
       }),
       {} as Record<number, Rock>
     ),
+    chickens: farm.chickens || {},
     skills: {
       farming: new Decimal(farm.skills.farming),
       gathering: new Decimal(farm.skills.gathering),
@@ -139,6 +138,7 @@ export function updateGame(
       stones: updateRocks(oldGameState.stones, newGameState.stones),
       iron: updateRocks(oldGameState.iron, newGameState.iron),
       gold: updateRocks(oldGameState.gold, newGameState.gold),
+      skills: newGameState.skills,
     };
   } catch (e) {
     console.log({ e });

@@ -6,19 +6,18 @@ import { Context as AuthContext } from "features/auth/lib/authMachine";
 import { metamask } from "../../../lib/blockchain/metamask";
 
 import { GameState } from "../types/game";
-import { loadSession } from "../actions/loadSession";
+import { loadSession, MintedAt } from "../actions/loadSession";
 import { INITIAL_FARM, EMPTY } from "./constants";
 import { autosave } from "../actions/autosave";
-import { mint } from "../actions/mint";
-import { LimitedItem } from "../types/craftables";
+import { LimitedItemName } from "../types/craftables";
 import { sync } from "../actions/sync";
-import { withdraw } from "../actions/withdraw";
-import { getOnChainState } from "../actions/visit";
+import { getOnChainState } from "../actions/onchain";
 import { ErrorCode, ERRORS } from "lib/errors";
 import { updateGame } from "./transforms";
 import { getFingerPrint } from "./botDetection";
 import { SkillName } from "../types/skills";
 import { levelUp } from "../actions/levelUp";
+import { reset } from "features/farming/hud/actions/reset";
 
 export type PastAction = GameEvent & {
   createdAt: Date;
@@ -26,17 +25,19 @@ export type PastAction = GameEvent & {
 
 export interface Context {
   state: GameState;
+  onChain: GameState;
   actions: PastAction[];
   offset: number;
+  owner?: string;
   sessionId?: string;
   errorCode?: keyof typeof ERRORS;
   fingerprint?: string;
-  whitelistedAt?: Date;
+  itemsMintedAt?: MintedAt;
 }
 
 type MintEvent = {
   type: "MINT";
-  item: LimitedItem;
+  item: LimitedItemName;
   captcha: string;
 };
 
@@ -72,6 +73,9 @@ export type BlockchainEvent =
   | {
       type: "CONTINUE";
     }
+  | {
+      type: "RESET";
+    }
   | WithdrawEvent
   | GameEvent
   | MintEvent
@@ -84,7 +88,11 @@ const GAME_EVENT_HANDLERS: TransitionsConfig<Context, BlockchainEvent> =
       ...events,
       [eventName]: {
         actions: assign((context: Context, event: GameEvent) => ({
-          state: processEvent(context.state as GameState, event) as GameState,
+          state: processEvent({
+            state: context.state as GameState,
+            action: event,
+            onChain: context.onChain as GameState,
+          }) as GameState,
           actions: [
             ...context.actions,
             {
@@ -102,15 +110,12 @@ export type BlockchainState = {
   value:
     | "loading"
     | "playing"
-    | "readonly"
     | "autosaving"
-    | "minting"
-    | "success"
     | "syncing"
+    | "synced"
     | "levelling"
-    | "withdrawing"
     | "error"
-    | "blacklisted";
+    | "resetting";
   context: Context;
 };
 
@@ -126,14 +131,11 @@ export type MachineInterpreter = Interpreter<
 
 type Options = AuthContext & { isNoob: boolean };
 
-export function startGame(authContext: Options) {
-  const handleInitialState = () => {
-    if (authContext.sessionId || !authContext.address) {
-      return "playing";
-    }
-    return "readonly";
-  };
+// Hashed eth 0 value
+export const INITIAL_SESSION =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
+export function startGame(authContext: Options) {
   return createMachine<Context, BlockchainEvent, BlockchainState>(
     {
       id: "gameMachine",
@@ -141,18 +143,33 @@ export function startGame(authContext: Options) {
       context: {
         actions: [],
         state: EMPTY,
-        sessionId: authContext.sessionId,
+        onChain: EMPTY,
+        sessionId: INITIAL_SESSION,
         offset: 0,
       },
       states: {
         loading: {
           invoke: {
-            src: async (context) => {
+            src: async () => {
+              const farmId = authContext.farmId as number;
+
+              const { game: onChain, owner } = await getOnChainState({
+                farmAddress: authContext.address as string,
+                id: farmId,
+              });
+
+              // Get sessionId
+              const sessionId =
+                farmId &&
+                (await metamask.getSessionManager().getSessionId(farmId));
+
               // Load the farm session
-              if (context.sessionId) {
+              if (sessionId) {
+                const fingerprint = await getFingerPrint();
+
                 const response = await loadSession({
-                  farmId: Number(authContext.farmId),
-                  sessionId: context.sessionId as string,
+                  farmId,
+                  sessionId,
                   token: authContext.rawToken as string,
                 });
 
@@ -160,54 +177,39 @@ export function startGame(authContext: Options) {
                   throw new Error("NO_FARM");
                 }
 
-                const { game, offset, isBlacklisted, whitelistedAt } = response;
+                const { game, offset, whitelistedAt, itemsMintedAt } = response;
 
                 // add farm address
                 game.farmAddress = authContext.address;
-
-                const fingerprint = await getFingerPrint();
 
                 return {
                   state: {
                     ...game,
                     id: Number(authContext.farmId),
                   },
+                  sessionId,
                   offset,
-                  isBlacklisted,
                   whitelistedAt,
                   fingerprint,
+                  itemsMintedAt,
+                  onChain,
+                  owner,
                 };
               }
 
-              // Visit farm
-              if (authContext.address) {
-                const { game, isBlacklisted } = await getOnChainState({
-                  farmAddress: authContext.address as string,
-                  id: Number(authContext.farmId),
-                });
-
-                game.id = authContext.farmId as number;
-
-                return { state: game, isBlacklisted };
-              }
-
-              return { state: INITIAL_FARM };
+              return { state: INITIAL_FARM, onChain };
             },
             onDone: [
               {
-                target: "blacklisted",
-                cond: (_, event) => event.data.isBlacklisted,
-                actions: assign({
-                  whitelistedAt: (_, event) =>
-                    new Date(event.data.whitelistedAt),
-                }),
-              },
-              {
-                target: handleInitialState(),
+                target: "playing",
                 actions: assign({
                   state: (_, event) => event.data.state,
+                  onChain: (_, event) => event.data.onChain,
+                  owner: (_, event) => event.data.owner,
                   offset: (_, event) => event.data.offset,
+                  sessionId: (_, event) => event.data.sessionId,
                   fingerprint: (_, event) => event.data.fingerprint,
+                  itemsMintedAt: (_, event) => event.data.itemsMintedAt,
                 }),
               },
             ],
@@ -248,14 +250,8 @@ export function startGame(authContext: Options) {
             SAVE: {
               target: "autosaving",
             },
-            MINT: {
-              target: "minting",
-            },
             SYNC: {
               target: "syncing",
-            },
-            WITHDRAW: {
-              target: "withdrawing",
             },
             LEVEL_UP: {
               target: "levelling",
@@ -265,6 +261,9 @@ export function startGame(authContext: Options) {
               actions: assign((_) => ({
                 errorCode: ERRORS.SESSION_EXPIRED as ErrorCode,
               })),
+            },
+            RESET: {
+              target: "resetting",
             },
           },
         },
@@ -322,48 +321,7 @@ export function startGame(authContext: Options) {
             },
           },
         },
-        minting: {
-          invoke: {
-            src: async (context, event) => {
-              // Autosave just in case
-              if (context.actions.length > 0) {
-                await autosave({
-                  farmId: Number(authContext.farmId),
-                  sessionId: context.sessionId as string,
-                  actions: context.actions,
-                  token: authContext.rawToken as string,
-                  offset: context.offset,
-                  fingerprint: context.fingerprint as string,
-                });
-              }
-
-              const { item, captcha } = event as MintEvent;
-
-              const { sessionId } = await mint({
-                farmId: Number(authContext.farmId),
-                sessionId: context.sessionId as string,
-                token: authContext.rawToken as string,
-                item,
-                captcha,
-              });
-
-              return {
-                sessionId,
-              };
-            },
-            onDone: {
-              target: "success",
-              actions: assign((_, event) => ({
-                sessionId: event.data.sessionId,
-                actions: [],
-              })),
-            },
-            onError: {
-              target: "error",
-              actions: "assignErrorMessage",
-            },
-          },
-        },
+        // minting
         syncing: {
           invoke: {
             src: async (context, event) => {
@@ -391,7 +349,7 @@ export function startGame(authContext: Options) {
               };
             },
             onDone: {
-              target: "success",
+              target: "synced",
               actions: assign((_, event) => ({
                 sessionId: event.data.sessionId,
                 actions: [],
@@ -405,43 +363,6 @@ export function startGame(authContext: Options) {
                 actions: assign((_) => ({
                   actions: [],
                 })),
-              },
-              {
-                target: "error",
-                actions: "assignErrorMessage",
-              },
-            ],
-          },
-        },
-        withdrawing: {
-          invoke: {
-            src: async (context, event) => {
-              const { amounts, ids, sfl, captcha } = event as WithdrawEvent;
-              const { sessionId } = await withdraw({
-                farmId: Number(authContext.farmId),
-                sessionId: context.sessionId as string,
-                token: authContext.rawToken as string,
-                amounts,
-                ids,
-                sfl,
-                captcha,
-              });
-
-              return {
-                sessionId,
-              };
-            },
-            onDone: {
-              target: "success",
-              actions: assign({
-                sessionId: (_, event) => event.data.sessionId,
-              }),
-            },
-            onError: [
-              {
-                target: "playing",
-                cond: (_, event: any) =>
-                  event.data.message === ERRORS.REJECTED_TRANSACTION,
               },
               {
                 target: "error",
@@ -494,20 +415,44 @@ export function startGame(authContext: Options) {
             },
           },
         },
-        readonly: {},
+        resetting: {
+          invoke: {
+            src: async (context, event) => {
+              // Autosave just in case
+              const { success } = await reset({
+                farmId: Number(authContext.farmId),
+                token: authContext.rawToken as string,
+                fingerprint: context.fingerprint as string,
+              });
+
+              return {
+                success,
+              };
+            },
+            onDone: [
+              {
+                target: "loading",
+              },
+            ],
+            onError: {
+              target: "error",
+              actions: "assignErrorMessage",
+            },
+          },
+        },
         error: {
           on: {
             CONTINUE: "playing",
           },
         },
-        blacklisted: {},
-        success: {
+        synced: {
           on: {
             REFRESH: {
               target: "loading",
             },
           },
         },
+        //  withdrawn
       },
     },
     {

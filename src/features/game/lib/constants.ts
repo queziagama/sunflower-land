@@ -128,13 +128,16 @@ export const INITIAL_FARM: GameState = {
   inventory: {
     Sunflower: new Decimal(5),
     Potato: new Decimal(12),
-    Scarecrow: new Decimal(4),
+    "Roasted Cauliflower": new Decimal(1),
+    Sauerkraut: new Decimal(1),
+    Wheat: new Decimal(3),
   },
   stock: INITIAL_STOCK,
   trees: INITIAL_TREES,
   stones: INITIAL_STONE,
   iron: INITIAL_IRON,
   gold: INITIAL_GOLD,
+  chickens: {},
   skills: {
     farming: new Decimal(0),
     gathering: new Decimal(0),
@@ -144,7 +147,10 @@ export const INITIAL_FARM: GameState = {
 export const EMPTY: GameState = {
   balance: new Decimal(fromWei("0")),
   fields: {},
-  inventory: {},
+  inventory: {
+    "Chicken Coop": new Decimal(1),
+  },
+  chickens: {},
   stock: {},
   trees: INITIAL_TREES,
   stones: INITIAL_STONE,

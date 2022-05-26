@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext } from "react";
 import { useActor } from "@xstate/react";
 import Modal from "react-bootstrap/esm/Modal";
 
@@ -22,39 +22,42 @@ import { ErrorCode } from "lib/errors";
 import { SupplyReached } from "./components/SupplyReached";
 import { Countdown } from "./components/Countdown";
 import { Minimized } from "./components/Minimized";
+import { Blacklisted } from "features/game/components/Blacklisted";
 
 export const Auth: React.FC = () => {
   const { authService } = useContext(AuthProvider.Context);
-  const [authState, send] = useActor(authService);
+  const [authState] = useActor(authService);
 
-  useEffect(() => {
-    const resized = async () => {
-      await new Promise((res) => setTimeout(res, 2000));
-      const isFullScreen = window.screenTop === 0 && window.screenY === 0;
+  // TODO - refine full screens system
+  // useEffect(() => {
+  //   const resized = async () => {
+  //     await new Promise((res) => setTimeout(res, 2000));
+  //     const isFullScreen = window.screenTop === 0 && window.screenY === 0;
 
-      // Minimised and gone full screen
-      if (authState.matches("minimised") && isFullScreen) {
-        send("REFRESH");
-      }
+  //     // Minimised and gone full screen
+  //     if (authState.matches("minimised") && isFullScreen) {
+  //       send("REFRESH");
+  //     }
 
-      // Was playing and then minimised
-      if (!authState.matches("minimised") && !isFullScreen) {
-        send("REFRESH");
-      }
-    };
+  //     // Was playing and then minimised
+  //     if (!authState.matches("minimised") && !isFullScreen) {
+  //       send("REFRESH");
+  //     }
+  //   };
 
-    window.addEventListener("resize", resized);
+  //   window.addEventListener("resize", resized);
 
-    return () => {
-      window.removeEventListener("resize", resized);
-    };
-  }, [authState]);
+  //   return () => {
+  //     window.removeEventListener("resize", resized);
+  //   };
+  // }, [authState]);
 
   return (
     <Modal
       centered
       show={
         !authState.matches({ connected: "authorised" }) &&
+        !authState.matches({ connected: "visitingContributor" }) &&
         !authState.matches("visiting")
       }
       backdrop={false}
@@ -69,7 +72,8 @@ export const Auth: React.FC = () => {
         <Panel>
           {(authState.matches({ connected: "loadingFarm" }) ||
             authState.matches("checkFarm") ||
-            authState.matches({ connected: "checkingSupply" })) && <Loading />}
+            authState.matches({ connected: "checkingSupply" }) ||
+            authState.matches({ connected: "checkingAccess" })) && <Loading />}
           {authState.matches("connecting") && <Loading text="Connecting" />}
           {authState.matches("signing") && <Signing />}
           {authState.matches({ connected: "noFarmLoaded" }) && <NoFarm />}
@@ -81,6 +85,8 @@ export const Auth: React.FC = () => {
           {authState.matches({ connected: "countdown" }) && <Countdown />}
           {authState.matches({ connected: "creatingFarm" }) && <CreatingFarm />}
           {authState.matches({ connected: "readyToStart" }) && <StartFarm />}
+          {(authState.matches({ connected: "blacklisted" }) ||
+            authState.matches("blacklisted")) && <Blacklisted />}
           {authState.matches("exploring") && <VisitFarm />}
           {authState.matches("minimised") && <Minimized />}
           {authState.matches("unauthorised") && (

@@ -2,10 +2,12 @@ import { removeSession } from "features/auth/actions/login";
 import { metamask } from "lib/blockchain/metamask";
 import { CONFIG } from "lib/config";
 import { ERRORS } from "lib/errors";
+import { sanitizeHTTPResponse } from "lib/network";
 import { SellAction } from "../events/sell";
 import { PastAction } from "../lib/gameMachine";
 import { makeGame } from "../lib/transforms";
 import { CraftAction } from "../types/craftables";
+import { getSessionId } from "./loadSession";
 
 type Request = {
   actions: PastAction[];
@@ -51,6 +53,33 @@ function serialize(events: PastAction[], offset: number) {
   }));
 }
 
+export async function autosaveRequest(
+  request: Omit<Request, "actions" | "offset"> & { actions: any[] }
+) {
+  const ttl = (window as any)["x-amz-ttl"];
+
+  // Useful for using cached results
+  const cachedKey = getSessionId();
+
+  return await window.fetch(`${API_URL}/autosave/${request.farmId}`, {
+    method: "POST",
+    headers: {
+      ...{
+        "content-type": "application/json;charset=UTF-8",
+        Authorization: `Bearer ${request.token}`,
+        "X-Fingerprint": request.fingerprint,
+      },
+      ...(ttl ? { "X-Amz-TTL": (window as any)["x-amz-ttl"] } : {}),
+    },
+    body: JSON.stringify({
+      sessionId: request.sessionId,
+      actions: request.actions,
+      clientVersion: CONFIG.CLIENT_VERSION as string,
+      cachedKey,
+    }),
+  });
+}
+
 export async function autosave(request: Request) {
   if (!API_URL) return { verified: true };
 
@@ -60,19 +89,14 @@ export async function autosave(request: Request) {
   // Serialize values before sending
   const actions = serialize(events, request.offset);
 
-  const response = await window.fetch(`${API_URL}/autosave`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json;charset=UTF-8",
-      Authorization: `Bearer ${request.token}`,
-      "X-Fingerprint": request.fingerprint,
-    },
-    body: JSON.stringify({
-      farmId: request.farmId,
-      sessionId: request.sessionId,
-      actions,
-    }),
+  const response = await autosaveRequest({
+    ...request,
+    actions,
   });
+
+  if (response.status === 503) {
+    throw new Error(ERRORS.MAINTENANCE);
+  }
 
   if (response.status === 401) {
     removeSession(metamask.myAccount as string);
@@ -86,9 +110,11 @@ export async function autosave(request: Request) {
     throw new Error("Could not save game");
   }
 
-  const data = await response.json();
+  const { farm } = await sanitizeHTTPResponse<{
+    farm: any;
+  }>(response);
 
-  const farm = makeGame(data.farm);
+  const game = makeGame(farm);
 
-  return { verified: true, farm };
+  return { verified: true, farm: game };
 }

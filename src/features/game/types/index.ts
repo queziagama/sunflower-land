@@ -1,5 +1,13 @@
 import { InventoryItemName } from "./game";
 
+export enum LimitedItemType {
+  BlacksmithItem = "BlacksmithItem",
+  MarketItem = "MarketItem",
+  BarnItem = "BarnItem",
+  Flag = "Flag",
+  MOMEventItem = "MOMEventItem",
+}
+
 export const KNOWN_IDS: Record<InventoryItemName, number> = {
   "Sunflower Seed": 101,
   "Potato Seed": 102,
@@ -51,6 +59,10 @@ export const KNOWN_IDS: Record<InventoryItemName, number> = {
   "Carrot Sword": 419,
   Nancy: 420,
   Kuebiko: 421,
+  "Nyon Statue": 422,
+  "Farmer Bath": 423,
+  "Homeless Tent": 424,
+  "Mysterious Head": 425,
 
   "Pumpkin Soup": 501,
   "Roasted Cauliflower": 502,
@@ -75,6 +87,10 @@ export const KNOWN_IDS: Record<InventoryItemName, number> = {
   Prospector: 706,
   Logger: 707,
   "Gold Rush": 708,
+  Artist: 709,
+  Coder: 710,
+  "Liquidity Provider": 711,
+  "Discord Mod": 712,
 
   "Australian Flag": 801,
   "Belgian Flag": 802,
@@ -118,6 +134,19 @@ export const KNOWN_IDS: Record<InventoryItemName, number> = {
   "Lithuanian Flag": 840,
   "Malaysian Flag": 841,
   "Colombian Flag": 842,
+
+  // Special events
+  "Egg Basket": 901,
+  "Red Egg": 902,
+  "Blue Egg": 903,
+  "Yellow Egg": 904,
+  "Pink Egg": 905,
+  "Purple Egg": 906,
+  "Orange Egg": 907,
+  "Green Egg": 908,
+  "Easter Bunny": 909,
+  "Engine Core": 910,
+  Observatory: 911,
 };
 
 // The reverse of above
